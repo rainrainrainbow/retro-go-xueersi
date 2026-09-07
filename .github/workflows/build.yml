@@ -1,0 +1,78 @@
+name: Build Retro-Go (学而思小喵掌机)
+
+# 云端编译工作流：本地修改 push 到 main 分支或手动触发后，
+# 自动在 GitHub Actions 云环境中编译并产出固件 .img 文件。
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+jobs:
+  build-firmware:
+    name: 编译固件 (xueersi-esp32)
+    runs-on: ubuntu-latest
+    # 云编译核心：使用乐鑫官方 ESP-IDF 4.4 编译环境容器（含完整工具链）
+    container:
+      image: espressif/idf:release-v4.4
+
+    # 默认在 checkout 出来的工作区（$GITHUB_WORKSPACE）内执行所有命令
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # rg_tool.py 需要 git 描述信息，仓库无 tag 时创建占位 tag 防止构建失败
+      - name: 设置 git 版本信息
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          if ! git describe --tags >/dev/null 2>&1; then
+            git tag v1.0.0
+            echo "已创建占位 tag v1.0.0"
+          fi
+          git describe --tags --always --dirty
+
+      # 应用 ESP-IDF 必需补丁（sdcard-fix 与 panic-hook，对应 esp-idf 4）
+      - name: 应用 ESP-IDF 补丁
+        shell: bash
+        run: |
+          cd /opt/esp/idf
+          patch --ignore-whitespace -p1 -i "$GITHUB_WORKSPACE/tools/patches/panic-hook (esp-idf 4).diff" || echo "panic-hook 已应用或无需应用"
+          patch --ignore-whitespace -p1 -i "$GITHUB_WORKSPACE/tools/patches/sdcard-fix (esp-idf 4).diff" || echo "sdcard-fix 已应用或无需应用"
+
+      # 加载 ESP-IDF 环境并清理旧构建产物
+      - name: 加载环境并清理
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          python3 rg_tool.py --target=xueersi-esp32 clean launcher retro-core
+
+      # 编译完整固件（release 会清理并重建全部目标，生成 .img 镜像）
+      - name: 编译固件 (xueersi-esp32)
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          python3 rg_tool.py --target=xueersi-esp32 release
+        timeout-minutes: 60
+
+      - name: 列出构建产物
+        shell: bash
+        run: |
+          ls -la *.img *.fw 2>/dev/null || true
+
+      - name: 上传固件产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: retro-go-xueersi-firmware
+          path: |
+            *.img
+            *.fw
+          if-no-files-found: warn
+          retention-days: 30
