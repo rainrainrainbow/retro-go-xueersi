@@ -34,9 +34,10 @@ void rg_led_set_effect(rg_led_effect_t effect, uint16_t color);
 
 // 设置单颗 LED 颜色 (index: 0-2, color: RGB565)
 void rg_led_set_pixel(int index, uint16_t color);
-
 // 刷新到硬件 (将缓冲区发送到 LED strip)
 void rg_led_update(void);
+// LED 灯效任务 (在系统主循环中周期调用, 更新灯效动画)
+void rg_led_task(void);
 
 #ifdef __cplusplus
 }
