@@ -89,13 +89,12 @@ static int wav_parse_header(const uint8_t *d, size_t size, decoder_info_t *info,
 
 static int wav_read_frames(decoder_t *dec, int16_t *out, int max_frames)
 {
-    struct { const uint8_t *data; size_t size; size_t offset; int bytes_per_frame; } *w = &dec->u.wav;
     int frames = 0;
     int bytes_per_sample = dec->info.bits_per_sample / 8;
     if (bytes_per_sample < 1) bytes_per_sample = 2;
 
-    while (frames < max_frames && w->offset + w->bytes_per_frame <= w->size) {
-        const uint8_t *s = w->data + w->offset;
+    while (frames < max_frames && dec->u.wav.offset + dec->u.wav.bytes_per_frame <= dec->u.wav.size) {
+        const uint8_t *s = dec->u.wav.data + dec->u.wav.offset;
         if (dec->info.channels == 2) {
             for (int c = 0; c < 2; c++) {
                 int16_t v = 0;
@@ -110,7 +109,7 @@ static int wav_read_frames(decoder_t *dec, int16_t *out, int max_frames)
             out[frames * 2 + 0] = v;
             out[frames * 2 + 1] = v;
         }
-        w->offset += w->bytes_per_frame;
+        dec->u.wav.offset += dec->u.wav.bytes_per_frame;
         frames++;
     }
     return frames;
@@ -122,13 +121,12 @@ static int mp3_read_frames(decoder_t *dec, int16_t *out, int max_frames)
 {
     static mp3d_sample_t pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
     mp3dec_frame_info_t fi;
-    struct { mp3dec_t dec; const uint8_t *data; size_t size; size_t offset; } *m = &dec->u.mp3;
 
-    while (m->offset < m->size) {
-        int n = mp3dec_decode_frame(&m->dec, m->data + m->offset,
-                                    (int)(m->size - m->offset), pcm, &fi);
-        if (fi.frame_bytes <= 0) { m->offset++; continue; }
-        m->offset += fi.frame_bytes;
+    while (dec->u.mp3.offset < dec->u.mp3.size) {
+        int n = mp3dec_decode_frame(&dec->u.mp3.dec, dec->u.mp3.data + dec->u.mp3.offset,
+                                    (int)(dec->u.mp3.size - dec->u.mp3.offset), pcm, &fi);
+        if (fi.frame_bytes <= 0) { dec->u.mp3.offset++; continue; }
+        dec->u.mp3.offset += fi.frame_bytes;
         if (n <= 0) continue;
 
         int ch = fi.channels > 0 ? fi.channels : dec->info.channels;
@@ -155,13 +153,12 @@ static int mp3_read_frames(decoder_t *dec, int16_t *out, int max_frames)
 
 static int ogg_read_frames(decoder_t *dec, int16_t *out, int max_frames)
 {
-    struct { stb_vorbis *v; int channels; } *o = &dec->u.ogg;
     short buf[PLAYER_DECODE_MAX_FRAMES * 2];
-    int n = stb_vorbis_get_samples_short_interleaved(o->v, o->channels, buf,
-                                                      max_frames * o->channels);
+    int n = stb_vorbis_get_samples_short_interleaved(dec->u.ogg.v, dec->u.ogg.channels, buf,
+                                                      max_frames * dec->u.ogg.channels);
     if (n <= 0) return 0;
-    int frames = n / o->channels;
-    if (o->channels == 2) {
+    int frames = n / dec->u.ogg.channels;
+    if (dec->u.ogg.channels == 2) {
         memcpy(out, buf, sizeof(short) * 2 * frames);
     } else {
         for (int i = 0; i < frames; i++) {
