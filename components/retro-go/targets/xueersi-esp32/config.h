@@ -59,8 +59,10 @@
 #define RG_BATTERY_CALC_PERCENT(raw) (100)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 
-// Status LED: WS2812B NeoPixel strip on GPIO14 (3 LEDs)
-#define RG_GPIO_LED                 GPIO_NUM_14
+// Status LED: WS2812B NeoPixel strip on GPIO14 (3 LEDs), driven via RMT
+// Note: GPIO14 is a data pin for WS2812B, not a plain GPIO, so we use a
+// dedicated driver (drivers/led/ws2812b.c) instead of the standard RG_GPIO_LED.
+#define RG_GPIO_LED_WS2812B         GPIO_NUM_14
 
 // SPI Display pins
 #define RG_GPIO_LCD_MISO            GPIO_NUM_19

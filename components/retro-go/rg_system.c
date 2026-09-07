@@ -24,6 +24,8 @@
 #include <SDL2/SDL_mutex.h>
 #endif
 
+#include "drivers/led/ws2812b.h"
+
 #define RG_STRUCT_MAGIC 0x12345678
 #define RG_LOGBUF_SIZE 2048
 typedef struct
@@ -260,6 +262,9 @@ static void system_monitor_task(void *arg)
         rg_battery_t battery = rg_input_read_battery();
         rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f));
         update_indicators(false);
+#ifdef RG_GPIO_LED_WS2812B
+        rg_led_task();
+#endif
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (S:%d R:%d+%d), BATT:%d",
@@ -372,6 +377,9 @@ static void platform_init(void)
     #ifdef RG_GPIO_LED
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_LED, 0);
+    #endif
+    #ifdef RG_GPIO_LED_WS2812B
+        rg_led_init();
     #endif
 #elif defined(RG_TARGET_SDL2)
     freopen("stdout.txt", "w", stdout);
