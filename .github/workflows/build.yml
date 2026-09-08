@@ -39,6 +39,13 @@ jobs:
           fi
           git describe --tags --always --dirty
 
+      # 确保工具脚本具备执行权限（避免 Permission denied）
+      - name: 设置工具脚本执行权限
+        shell: bash
+        run: |
+          chmod +x $GITHUB_WORKSPACE/tools/*.py $GITHUB_WORKSPACE/rg_tool.py 2>/dev/null || true
+          ls -la tools/mkfw.py rg_tool.py
+
       # 应用 ESP-IDF 必需补丁（sdcard-fix 与 panic-hook，对应 esp-idf 4）
       - name: 应用 ESP-IDF 补丁
         shell: bash
