@@ -3,12 +3,12 @@
  * 3x WS2812B on GPIO14 (RMT), GRB order. ESP-IDF legacy RMT API.
  */
 #include "rg_system.h"
-
 #ifdef RG_GPIO_LED_WS2812B
-
+#include "ws2812b.h"
 #include <driver/rmt.h>
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
+#include <math.h>
 #include <string.h>
 
 #define LED_COUNT       (3)

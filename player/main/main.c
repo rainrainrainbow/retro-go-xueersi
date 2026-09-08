@@ -51,7 +51,7 @@ static void audio_task(void *arg)
             break;
         }
 
-        rg_audio_submit(audio_buffer, frames);
+        rg_audio_submit((rg_audio_frame_t *)audio_buffer, frames);
         rg_system_tick(0);
     }
 
